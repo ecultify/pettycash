@@ -157,6 +157,8 @@ export default function DetailPage({
       });
       toast.success("Changes saved.");
       await load();
+      // Invalidate cached list screens so going back shows fresh data.
+      router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not save.");
     } finally {
@@ -174,6 +176,7 @@ export default function DetailPage({
         next ? "Marked as returned to giver." : "Marked as not returned.",
       );
       await load();
+      router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not update.");
     } finally {

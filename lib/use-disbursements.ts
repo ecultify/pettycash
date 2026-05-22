@@ -36,5 +36,19 @@ export function useDisbursements() {
     reload();
   }, [reload]);
 
+  // Refetch when the app/tab regains focus, so a list is never stale after
+  // adding or editing a record on another screen.
+  useEffect(() => {
+    function refetchIfVisible() {
+      if (document.visibilityState === "visible") reload();
+    }
+    window.addEventListener("focus", refetchIfVisible);
+    document.addEventListener("visibilitychange", refetchIfVisible);
+    return () => {
+      window.removeEventListener("focus", refetchIfVisible);
+      document.removeEventListener("visibilitychange", refetchIfVisible);
+    };
+  }, [reload]);
+
   return { items, error, refreshing, reload };
 }
