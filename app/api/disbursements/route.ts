@@ -36,6 +36,12 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as Partial<CreatePayload>;
 
+    if (!body.allocator?.trim()) {
+      return NextResponse.json(
+        { error: "Allocator is required." },
+        { status: 400 },
+      );
+    }
     if (!body.giver?.trim() || !body.recipient?.trim()) {
       return NextResponse.json(
         { error: "Giver and recipient are required." },
@@ -56,12 +62,26 @@ export async function POST(request: Request) {
       );
     }
 
+    // amount_allocated is optional; validate only when provided.
+    let amountAllocated: number | undefined;
+    if (body.amount_allocated != null) {
+      amountAllocated = Number(body.amount_allocated);
+      if (!isFinite(amountAllocated) || amountAllocated < 0) {
+        return NextResponse.json(
+          { error: "Amount allocated must be a number of 0 or more." },
+          { status: 400 },
+        );
+      }
+    }
+
     const payload: CreatePayload = {
+      allocator: body.allocator.trim(),
       giver: body.giver.trim(),
       recipient: body.recipient.trim(),
       amount_given: amountGiven,
       given_date: body.given_date,
       amount_spent: Number(body.amount_spent) || 0,
+      ...(amountAllocated != null ? { amount_allocated: amountAllocated } : {}),
       ...(body.notes?.trim() ? { notes: body.notes.trim() } : {}),
     };
 

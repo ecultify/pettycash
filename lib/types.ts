@@ -2,8 +2,10 @@
 // NOTE: DECIMAL fields (amount_given, amount_spent) arrive as STRINGS.
 export type DisbursementRecord = {
   id: number;
+  allocator: string;
   giver: string;
   recipient: string;
+  amount_allocated: string;
   amount_given: string;
   given_date: string; // "YYYY-MM-DD HH:MM:SS"
   amount_spent: string;
@@ -18,8 +20,10 @@ export type DisbursementRecord = {
 // Normalised record used by the UI (numbers parsed, derived fields added).
 export type Disbursement = {
   id: number;
+  allocator: string;
   giver: string;
   recipient: string;
+  amountAllocated: number;
   amountGiven: number;
   amountSpent: number;
   givenDate: string; // "YYYY-MM-DD HH:MM:SS"
@@ -33,8 +37,10 @@ export type Disbursement = {
 export type DisbursementStatus = "returned" | "outstanding" | "spent";
 
 export type CreatePayload = {
+  allocator: string;
   giver: string;
   recipient: string;
+  amount_allocated?: number;
   amount_given: number;
   given_date: string;
   amount_spent?: number;
@@ -43,8 +49,10 @@ export type CreatePayload = {
 
 export type UpdatePayload = {
   id: number;
+  allocator?: string;
   giver?: string;
   recipient?: string;
+  amount_allocated?: number;
   amount_given?: number;
   given_date?: string;
   amount_spent?: number;

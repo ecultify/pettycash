@@ -35,13 +35,16 @@ function statusOf(amountGiven: number, amountSpent: number, returned: boolean): 
 
 // Convert a raw backend record into the normalised UI shape.
 export function normalise(r: DisbursementRecord): Disbursement {
+  const amountAllocated = Number(r.amount_allocated) || 0;
   const amountGiven = Number(r.amount_given) || 0;
   const amountSpent = Number(r.amount_spent) || 0;
   const remainderReturned = r.remainder_returned === 1;
   return {
     id: r.id,
+    allocator: r.allocator ?? "",
     giver: r.giver,
     recipient: r.recipient,
+    amountAllocated,
     amountGiven,
     amountSpent,
     givenDate: r.given_date,

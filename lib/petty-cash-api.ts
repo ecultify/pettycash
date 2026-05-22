@@ -35,10 +35,17 @@ export async function callBackend<T>(
   method: Method,
   body?: unknown,
 ): Promise<T> {
-  const apiKey = process.env.PETTY_CASH_API_KEY;
+  // The ONE server-side env var the whole app uses for backend auth.
+  // .trim() guards against a stray newline/space pasted into the host panel.
+  const apiKey = process.env.PETTY_CASH_API_KEY?.trim();
   if (!apiKey) {
+    console.error(
+      "[petty-cash] Missing required environment variable: PETTY_CASH_API_KEY. " +
+        "Set it in the hosting provider's Node.js environment settings and " +
+        "restart the app. (A local .env.local file is NOT deployed.)",
+    );
     throw new ApiError(
-      "Server is missing PETTY_CASH_API_KEY. Set it in the environment.",
+      "Server is missing the PETTY_CASH_API_KEY environment variable.",
       500,
     );
   }
@@ -73,6 +80,14 @@ export async function callBackend<T>(
       data && typeof data === "object" && "error" in data
         ? String((data as { error: unknown }).error)
         : undefined;
+    if (res.status === 401 || code === "invalid_api_key") {
+      console.error(
+        "[petty-cash] Backend returned 401 invalid_api_key. The env var " +
+          "PETTY_CASH_API_KEY is SET but its VALUE is wrong. The key is " +
+          "case-sensitive — check for uppercase letters, an 'O' vs '0' typo, " +
+          "or trailing whitespace. It must equal the key exactly.",
+      );
+    }
     throw new ApiError(friendly(code, res.status), res.status);
   }
 

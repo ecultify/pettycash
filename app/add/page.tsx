@@ -19,6 +19,8 @@ function today() {
 
 export default function AddPage() {
   const router = useRouter();
+  const [allocator, setAllocator] = useState("");
+  const [amountAllocated, setAmountAllocated] = useState("");
   const [giver, setGiver] = useState("");
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
@@ -30,6 +32,10 @@ export default function AddPage() {
     e.preventDefault();
     if (submitting) return;
 
+    if (!allocator.trim()) {
+      toast.error("Allocator is required.");
+      return;
+    }
     if (!giver.trim() || !recipient.trim()) {
       toast.error("Giver and recipient are required.");
       return;
@@ -37,6 +43,12 @@ export default function AddPage() {
     const amountGiven = Number(amount);
     if (!isFinite(amountGiven) || amountGiven < 0) {
       toast.error("Enter a valid amount given.");
+      return;
+    }
+    const allocatedRaw = amountAllocated.trim();
+    const allocated = Number(allocatedRaw);
+    if (allocatedRaw && (!isFinite(allocated) || allocated < 0)) {
+      toast.error("Enter a valid amount allocated.");
       return;
     }
     if (!givenDate) {
@@ -47,8 +59,10 @@ export default function AddPage() {
     setSubmitting(true);
     try {
       await createDisbursement({
+        allocator: allocator.trim(),
         giver: giver.trim(),
         recipient: recipient.trim(),
+        amount_allocated: allocatedRaw ? allocated : undefined,
         amount_given: amountGiven,
         given_date: givenDate,
         notes: notes.trim() || undefined,
@@ -67,6 +81,26 @@ export default function AddPage() {
       <AppHeader title="Add disbursement" backHref="/" />
       <form onSubmit={onSubmit} className="flex flex-1 flex-col px-4 py-4">
         <div className="space-y-4">
+          <Field label="Allocator">
+            <Input
+              value={allocator}
+              onChange={(e) => setAllocator(e.target.value)}
+              placeholder="Who gave you this money?"
+              autoComplete="off"
+              className="h-12"
+            />
+          </Field>
+
+          <Field label="Amount allocated (₹)">
+            <Input
+              value={amountAllocated}
+              onChange={(e) => setAmountAllocated(e.target.value)}
+              inputMode="decimal"
+              placeholder="How much did they give you? (optional)"
+              className="h-12 text-base tabular-nums"
+            />
+          </Field>
+
           <Field label="Giver">
             <Input
               value={giver}

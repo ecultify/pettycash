@@ -158,6 +158,7 @@ function DisbursementRow({ d }: { d: Disbursement }) {
     >
       <div className="flex items-start justify-between gap-3">
         <p className="min-w-0 flex-1 truncate text-sm font-medium">
+          {d.allocator} <span className="text-muted-foreground">→</span>{" "}
           {d.giver} <span className="text-muted-foreground">→</span>{" "}
           {d.recipient}
         </p>

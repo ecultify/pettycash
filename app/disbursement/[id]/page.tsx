@@ -32,6 +32,8 @@ import { formatDate, formatINR, normalise } from "@/lib/format";
 import type { Disbursement } from "@/lib/types";
 
 type Form = {
+  allocator: string;
+  amountAllocated: string;
   giver: string;
   recipient: string;
   amountGiven: string;
@@ -42,6 +44,8 @@ type Form = {
 
 function toForm(d: Disbursement): Form {
   return {
+    allocator: d.allocator,
+    amountAllocated: String(d.amountAllocated),
     giver: d.giver,
     recipient: d.recipient,
     amountGiven: String(d.amountGiven),
@@ -94,12 +98,21 @@ export default function DetailPage({
     e.preventDefault();
     if (!form || saving) return;
 
+    if (!form.allocator.trim()) {
+      toast.error("Allocator is required.");
+      return;
+    }
     if (!form.giver.trim() || !form.recipient.trim()) {
       toast.error("Giver and recipient are required.");
       return;
     }
+    const amountAllocated = Number(form.amountAllocated);
     const amountGiven = Number(form.amountGiven);
     const amountSpent = Number(form.amountSpent);
+    if (!isFinite(amountAllocated) || amountAllocated < 0) {
+      toast.error("Enter a valid amount allocated.");
+      return;
+    }
     if (!isFinite(amountGiven) || amountGiven < 0) {
       toast.error("Enter a valid amount given.");
       return;
@@ -113,8 +126,10 @@ export default function DetailPage({
     try {
       await updateDisbursement({
         id: recordId,
+        allocator: form.allocator.trim(),
         giver: form.giver.trim(),
         recipient: form.recipient.trim(),
+        amount_allocated: amountAllocated,
         amount_given: amountGiven,
         given_date: form.givenDate,
         amount_spent: amountSpent,
@@ -203,12 +218,15 @@ export default function DetailPage({
         <section className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-start justify-between gap-3">
             <p className="min-w-0 flex-1 text-sm font-medium">
-              {record.giver} <span className="text-muted-foreground">→</span>{" "}
+              {record.allocator}{" "}
+              <span className="text-muted-foreground">→</span> {record.giver}{" "}
+              <span className="text-muted-foreground">→</span>{" "}
               {record.recipient}
             </p>
             <StatusPill status={record.status} remainder={record.remainder} />
           </div>
-          <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Stat label="Allocated" value={formatINR(record.amountAllocated)} />
             <Stat label="Given" value={formatINR(record.amountGiven)} />
             <Stat label="Spent" value={formatINR(record.amountSpent)} />
             <Stat
@@ -269,6 +287,24 @@ export default function DetailPage({
           </Field>
 
           <Separator />
+
+          <Field label="Allocator">
+            <Input
+              value={form.allocator}
+              onChange={(e) => set("allocator")(e.target.value)}
+              autoComplete="off"
+              className="h-12"
+            />
+          </Field>
+
+          <Field label="Amount allocated (₹)">
+            <Input
+              value={form.amountAllocated}
+              onChange={(e) => set("amountAllocated")(e.target.value)}
+              inputMode="decimal"
+              className="h-12 text-base tabular-nums"
+            />
+          </Field>
 
           <Field label="Giver">
             <Input
