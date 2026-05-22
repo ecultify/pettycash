@@ -30,6 +30,8 @@ export type Disbursement = {
   remainderReturned: boolean;
   returnedAt: string | null;
   notes: string | null;
+  createdAt: number; // unix ms
+  updatedAt: number | null; // unix ms
   remainder: number; // amountGiven - amountSpent
   status: DisbursementStatus;
 };

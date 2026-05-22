@@ -1,206 +1,109 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
-import { Plus, RefreshCw } from "lucide-react";
-import { toast } from "sonner";
+import { ChevronRight } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
-import { StatusPill } from "@/components/status-pill";
+import { AddButton } from "@/components/add-button";
+import { RefreshButton } from "@/components/refresh-button";
+import { TotalsCards } from "@/components/totals-cards";
+import { ViewTabs } from "@/components/view-tabs";
+import { Stat } from "@/components/stat";
+import { EmptyState, ErrorState } from "@/components/states";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { fetchDisbursements } from "@/lib/client";
-import { formatDate, formatINR, normalise } from "@/lib/format";
-import type { Disbursement } from "@/lib/types";
+import { useDisbursements } from "@/lib/use-disbursements";
+import {
+  computeTotals,
+  groupByAllocator,
+  type AllocatorSummary,
+} from "@/lib/aggregate";
+import { formatINR } from "@/lib/format";
 
-export default function HomePage() {
-  const [items, setItems] = useState<Disbursement[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
+export default function OverviewPage() {
+  const { items, error, refreshing, reload } = useDisbursements();
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    setError(null);
-    try {
-      const records = await fetchDisbursements();
-      const list = records
-        .map(normalise)
-        .sort((a, b) => b.givenDate.localeCompare(a.givenDate));
-      setItems(list);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load.";
-      setError(message);
-      if (isRefresh) toast.error(message);
-    } finally {
-      setRefreshing(false);
-    }
-  }, []);
+  const totals = useMemo(() => computeTotals(items ?? []), [items]);
+  const allocators = useMemo(() => groupByAllocator(items ?? []), [items]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  const totals = useMemo(() => {
-    const list = items ?? [];
-    return {
-      disbursed: list.reduce((s, d) => s + d.amountGiven, 0),
-      spent: list.reduce((s, d) => s + d.amountSpent, 0),
-      outstanding: list
-        .filter((d) => !d.remainderReturned)
-        .reduce((s, d) => s + d.remainder, 0),
-    };
-  }, [items]);
+  const loading = items === null && !error;
 
   return (
     <>
       <AppHeader
         title="Petty Cash"
         action={
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Refresh"
-            onClick={() => load(true)}
+          <RefreshButton
+            onClick={() => reload(true)}
+            spinning={refreshing}
             disabled={refreshing || items === null}
-            className="h-10 w-10"
-          >
-            <RefreshCw className={refreshing ? "animate-spin" : ""} />
-          </Button>
+          />
         }
       />
 
-      <main className="flex-1 px-4 pb-28 pt-4">
-        {/* Summary strip */}
-        <section className="grid grid-cols-3 gap-2 rounded-xl border border-border bg-card p-3">
-          <SummaryCell
-            label="Disbursed"
-            value={totals.disbursed}
-            loading={items === null}
-          />
-          <SummaryCell
-            label="Spent"
-            value={totals.spent}
-            loading={items === null}
-          />
-          <SummaryCell
-            label="Outstanding"
-            value={totals.outstanding}
-            loading={items === null}
-            emphasise
-          />
-        </section>
+      <main className="flex-1 space-y-4 px-4 pb-28 pt-4">
+        <ViewTabs />
 
-        {/* List */}
-        <section className="mt-4 space-y-2">
-          {items === null && !error ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-[88px] w-full rounded-xl" />
+        <TotalsCards totals={totals} loading={loading} />
+
+        <section className="space-y-2">
+          <h2 className="px-1 text-sm font-semibold">Allocators</h2>
+
+          {loading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-[112px] w-full rounded-xl" />
             ))
           ) : error ? (
-            <ErrorState message={error} onRetry={() => load(true)} />
-          ) : items && items.length === 0 ? (
-            <EmptyState />
+            <ErrorState message={error} onRetry={() => reload(true)} />
+          ) : allocators.length === 0 ? (
+            <EmptyState
+              title="No disbursements yet"
+              hint="Tap “Add” to record the first cash disbursement."
+            />
           ) : (
-            items?.map((d) => <DisbursementRow key={d.id} d={d} />)
+            allocators.map((a) => <AllocatorCard key={a.name} a={a} />)
           )}
         </section>
       </main>
 
-      {/* Floating Add button */}
-      <Link
-        href="/add"
-        className="fixed bottom-6 left-1/2 z-20 flex h-14 -translate-x-1/2 items-center gap-2 rounded-full bg-primary px-6 text-base font-semibold text-primary-foreground shadow-lg shadow-black/20 active:scale-95"
-      >
-        <Plus className="h-5 w-5" />
-        Add
-      </Link>
+      <AddButton />
     </>
   );
 }
 
-function SummaryCell({
-  label,
-  value,
-  loading,
-  emphasise,
-}: {
-  label: string;
-  value: number;
-  loading: boolean;
-  emphasise?: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
-      {loading ? (
-        <Skeleton className="h-5 w-16" />
-      ) : (
-        <span
-          className={
-            emphasise
-              ? "text-base font-semibold tabular-nums"
-              : "text-base font-medium tabular-nums"
-          }
-        >
-          {formatINR(value)}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function DisbursementRow({ d }: { d: Disbursement }) {
+function AllocatorCard({ a }: { a: AllocatorSummary }) {
   return (
     <Link
-      href={`/disbursement/${d.id}`}
-      className="block rounded-xl border border-border bg-card p-3.5 active:bg-muted"
+      href={`/allocator/${encodeURIComponent(a.name)}`}
+      className="block rounded-xl border border-border bg-card p-4 active:bg-muted"
     >
-      <div className="flex items-start justify-between gap-3">
-        <p className="min-w-0 flex-1 truncate text-sm font-medium">
-          {d.allocator} <span className="text-muted-foreground">→</span>{" "}
-          {d.giver} <span className="text-muted-foreground">→</span>{" "}
-          {d.recipient}
-        </p>
-        <span className="shrink-0 text-sm font-semibold tabular-nums">
-          {formatINR(d.amountGiven)}
-        </span>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{a.name}</p>
+          <p className="text-xs text-muted-foreground">
+            {a.count} {a.count === 1 ? "disbursement" : "disbursements"}
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="text-right">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Allocated
+            </p>
+            <p className="text-base font-semibold tabular-nums">
+              {formatINR(a.totals.allocated)}
+            </p>
+          </div>
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </div>
       </div>
-      <div className="mt-2 flex items-center justify-between gap-3">
-        <span className="text-xs text-muted-foreground">
-          {formatDate(d.givenDate)}
-        </span>
-        <StatusPill status={d.status} remainder={d.remainder} />
+      <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border pt-3">
+        <Stat label="Handed Off" value={formatINR(a.totals.handedOff)} />
+        <Stat label="Spent" value={formatINR(a.totals.spent)} />
+        <Stat
+          label="Outstanding"
+          value={formatINR(a.totals.outstanding)}
+          emphasise
+        />
       </div>
     </Link>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div className="rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
-      <p className="text-sm font-medium">No disbursements yet</p>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Tap “Add” to record the first cash disbursement.
-      </p>
-    </div>
-  );
-}
-
-function ErrorState({
-  message,
-  onRetry,
-}: {
-  message: string;
-  onRetry: () => void;
-}) {
-  return (
-    <div className="rounded-xl border border-dashed border-border bg-card px-6 py-10 text-center">
-      <p className="text-sm font-medium">Couldn’t load disbursements</p>
-      <p className="mt-1 text-sm text-muted-foreground">{message}</p>
-      <Button variant="outline" className="mt-4" onClick={onRetry}>
-        Try again
-      </Button>
-    </div>
   );
 }

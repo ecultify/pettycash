@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AppHeader } from "@/components/app-header";
@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createDisbursement } from "@/lib/client";
+import { useDisbursements } from "@/lib/use-disbursements";
+import { distinctNames } from "@/lib/aggregate";
 
 function today() {
   // Local YYYY-MM-DD for the date input default.
@@ -17,16 +19,39 @@ function today() {
   return new Date(d.getTime() - offset * 60000).toISOString().slice(0, 10);
 }
 
+// Validate an optional money field; returns the parsed number or null,
+// or throws a message string when the value is present but invalid.
+function optionalAmount(raw: string, label: string): number | undefined {
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  const n = Number(trimmed);
+  if (!isFinite(n) || n < 0) throw `Enter a valid ${label}.`;
+  return n;
+}
+
 export default function AddPage() {
   const router = useRouter();
+  const { items } = useDisbursements();
+
   const [allocator, setAllocator] = useState("");
   const [amountAllocated, setAmountAllocated] = useState("");
   const [giver, setGiver] = useState("");
   const [recipient, setRecipient] = useState("");
-  const [amount, setAmount] = useState("");
+  const [amountGiven, setAmountGiven] = useState("");
   const [givenDate, setGivenDate] = useState(today());
+  const [amountSpent, setAmountSpent] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Name suggestions drawn from existing records (free text still allowed).
+  const allocatorNames = useMemo(
+    () => distinctNames(items ?? [], "allocator"),
+    [items],
+  );
+  const giverNames = useMemo(
+    () => distinctNames(items ?? [], "giver"),
+    [items],
+  );
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,19 +65,23 @@ export default function AddPage() {
       toast.error("Giver and recipient are required.");
       return;
     }
-    const amountGiven = Number(amount);
-    if (!isFinite(amountGiven) || amountGiven < 0) {
+    const given = Number(amountGiven);
+    if (!amountGiven.trim() || !isFinite(given) || given < 0) {
       toast.error("Enter a valid amount given.");
-      return;
-    }
-    const allocatedRaw = amountAllocated.trim();
-    const allocated = Number(allocatedRaw);
-    if (allocatedRaw && (!isFinite(allocated) || allocated < 0)) {
-      toast.error("Enter a valid amount allocated.");
       return;
     }
     if (!givenDate) {
       toast.error("Pick a given date.");
+      return;
+    }
+
+    let allocated: number | undefined;
+    let spent: number | undefined;
+    try {
+      allocated = optionalAmount(amountAllocated, "amount allocated");
+      spent = optionalAmount(amountSpent, "amount spent");
+    } catch (message) {
+      toast.error(String(message));
       return;
     }
 
@@ -62,9 +91,10 @@ export default function AddPage() {
         allocator: allocator.trim(),
         giver: giver.trim(),
         recipient: recipient.trim(),
-        amount_allocated: allocatedRaw ? allocated : undefined,
-        amount_given: amountGiven,
+        amount_allocated: allocated,
+        amount_given: given,
         given_date: givenDate,
+        amount_spent: spent,
         notes: notes.trim() || undefined,
       });
       toast.success("Disbursement added.");
@@ -81,14 +111,20 @@ export default function AddPage() {
       <AppHeader title="Add disbursement" backHref="/" />
       <form onSubmit={onSubmit} className="flex flex-1 flex-col px-4 py-4">
         <div className="space-y-4">
-          <Field label="Allocator">
+          <Field label="Allocator" required>
             <Input
               value={allocator}
               onChange={(e) => setAllocator(e.target.value)}
               placeholder="Who gave you this money?"
+              list="allocator-names"
               autoComplete="off"
               className="h-12"
             />
+            <datalist id="allocator-names">
+              {allocatorNames.map((n) => (
+                <option key={n} value={n} />
+              ))}
+            </datalist>
           </Field>
 
           <Field label="Amount allocated (₹)">
@@ -101,17 +137,23 @@ export default function AddPage() {
             />
           </Field>
 
-          <Field label="Giver">
+          <Field label="Giver" required>
             <Input
               value={giver}
               onChange={(e) => setGiver(e.target.value)}
               placeholder="Who handed out the cash"
+              list="giver-names"
               autoComplete="off"
               className="h-12"
             />
+            <datalist id="giver-names">
+              {giverNames.map((n) => (
+                <option key={n} value={n} />
+              ))}
+            </datalist>
           </Field>
 
-          <Field label="Recipient">
+          <Field label="Recipient" required>
             <Input
               value={recipient}
               onChange={(e) => setRecipient(e.target.value)}
@@ -121,17 +163,17 @@ export default function AddPage() {
             />
           </Field>
 
-          <Field label="Amount given (₹)">
+          <Field label="Amount given (₹)" required>
             <Input
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              value={amountGiven}
+              onChange={(e) => setAmountGiven(e.target.value)}
               inputMode="decimal"
               placeholder="0"
               className="h-12 text-base tabular-nums"
             />
           </Field>
 
-          <Field label="Given date">
+          <Field label="Given date" required>
             <Input
               type="date"
               value={givenDate}
@@ -140,11 +182,21 @@ export default function AddPage() {
             />
           </Field>
 
-          <Field label="Notes (optional)">
+          <Field label="Amount spent (₹)">
+            <Input
+              value={amountSpent}
+              onChange={(e) => setAmountSpent(e.target.value)}
+              inputMode="decimal"
+              placeholder="0 (optional)"
+              className="h-12 text-base tabular-nums"
+            />
+          </Field>
+
+          <Field label="Notes">
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="What is this cash for?"
+              placeholder="Optional"
               rows={3}
             />
           </Field>
@@ -166,14 +218,19 @@ export default function AddPage() {
 
 function Field({
   label,
+  required,
   children,
 }: {
   label: string;
+  required?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm text-muted-foreground">{label}</Label>
+      <Label className="text-sm text-muted-foreground">
+        {label}
+        {required ? <span className="ml-0.5 text-foreground">*</span> : null}
+      </Label>
       {children}
     </div>
   );

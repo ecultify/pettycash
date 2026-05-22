@@ -27,6 +27,20 @@ export function formatDate(value: string | null): string {
   });
 }
 
+// Unix ms -> "22 May 2026, 2:30 PM"
+export function formatDateTime(ms: number | null): string {
+  if (!ms) return "—";
+  const d = new Date(ms);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function statusOf(amountGiven: number, amountSpent: number, returned: boolean): DisbursementStatus {
   if (returned) return "returned";
   if (amountGiven - amountSpent > 0) return "outstanding";
@@ -51,6 +65,8 @@ export function normalise(r: DisbursementRecord): Disbursement {
     remainderReturned,
     returnedAt: r.returned_at,
     notes: r.notes,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
     remainder: amountGiven - amountSpent,
     status: statusOf(amountGiven, amountSpent, remainderReturned),
   };

@@ -4,15 +4,35 @@ A minimalistic, mobile-first web app for office staff to record cash
 disbursements and keep them updated. Built with Next.js (App Router,
 TypeScript), Tailwind CSS, and shadcn/ui.
 
-## Features
+## The 3-role flow
 
-- **List** — every disbursement, newest first, with a summary strip
-  (Total Disbursed, Total Spent, Outstanding) and status pills.
-- **Add** — record a new disbursement (giver, recipient, amount, date, notes).
-- **Detail / Edit** — update amount spent, mark the remainder returned to the
-  giver, edit any field, or delete the record.
+Each record tracks cash moving through three people:
 
-All money is shown in Indian Rupees (`₹`).
+```
+ALLOCATOR --amount_allocated--> GIVER --amount_given--> RECIPIENT
+```
+
+The recipient spends `amount_spent` and returns the remainder to the giver.
+
+## Screens
+
+- **Overview** (`/`) — headline totals across all records (Allocated, Handed
+  Off, Spent, Outstanding) followed by one card per allocator with their own
+  totals and disbursement count. Tap a card to drill in.
+- **Allocator detail** (`/allocator/[name]`) — that allocator's totals, with
+  their disbursements grouped by month (newest first). Each collapsible month
+  group shows subtotals; each row shows giver → recipient, amounts, and a
+  status pill.
+- **All disbursements** (`/all`) — every record grouped by month, with
+  allocator + status filters and a search box. Totals reflect the filters.
+- **Add** (`/add`) — record a disbursement. Allocator and Giver offer
+  suggestions from existing records but accept free text.
+- **Detail / edit** (`/disbursement/[id]`) — view every field and the computed
+  remainder, edit anything, update amount spent, toggle "remainder returned",
+  or delete (with confirmation).
+
+All totals are derived on the client from the records list — no extra
+endpoints. All money is shown in Indian Rupees (`₹`).
 
 ## How it talks to the backend
 
@@ -71,12 +91,16 @@ key.**
 ```
 app/
   api/disbursements/route.ts   Server proxy (GET / POST / PATCH / DELETE)
-  page.tsx                     List + summary strip
+  page.tsx                     Overview dashboard (totals + allocator cards)
+  all/page.tsx                 All disbursements (month groups, filters, search)
+  allocator/[name]/page.tsx    One allocator's totals + monthly disbursements
   add/page.tsx                 Add disbursement form
   disbursement/[id]/page.tsx   Detail / edit / delete
 lib/
   petty-cash-api.ts            Server-only backend client (attaches API key)
   client.ts                    Browser fetch helpers (call /api/* only)
+  use-disbursements.ts         Client hook: fetch + normalise the records list
+  aggregate.ts                 Totals, allocator grouping, month grouping
   format.ts                    Money / date formatting, record normalisation
   types.ts                     Shared types
 components/                    UI components + shadcn/ui primitives

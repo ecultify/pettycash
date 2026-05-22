@@ -6,6 +6,7 @@ import { Check, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppHeader } from "@/components/app-header";
 import { StatusPill } from "@/components/status-pill";
+import { Stat } from "@/components/stat";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +29,7 @@ import {
   fetchDisbursements,
   updateDisbursement,
 } from "@/lib/client";
-import { formatDate, formatINR, normalise } from "@/lib/format";
+import { formatDate, formatDateTime, formatINR, normalise } from "@/lib/format";
 import type { Disbursement } from "@/lib/types";
 
 type Form = {
@@ -223,7 +224,7 @@ export default function DetailPage({
               <span className="text-muted-foreground">→</span>{" "}
               {record.recipient}
             </p>
-            <StatusPill status={record.status} remainder={record.remainder} />
+            <StatusPill status={record.status} />
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <Stat label="Allocated" value={formatINR(record.amountAllocated)} />
@@ -239,6 +240,12 @@ export default function DetailPage({
             Given on {formatDate(record.givenDate)}
             {record.returnedAt
               ? ` · Returned on ${formatDate(record.returnedAt)}`
+              : ""}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Added {formatDateTime(record.createdAt)}
+            {record.updatedAt
+              ? ` · Updated ${formatDateTime(record.updatedAt)}`
               : ""}
           </p>
         </section>
@@ -407,33 +414,6 @@ function Field({
     <div className="space-y-1.5">
       <Label className="text-sm text-muted-foreground">{label}</Label>
       {children}
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  emphasise,
-}: {
-  label: string;
-  value: string;
-  emphasise?: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
-      <span
-        className={
-          emphasise
-            ? "text-sm font-semibold tabular-nums"
-            : "text-sm font-medium tabular-nums"
-        }
-      >
-        {value}
-      </span>
     </div>
   );
 }

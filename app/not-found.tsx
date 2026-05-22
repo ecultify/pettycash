@@ -9,7 +9,7 @@ export default function NotFound() {
         That screen doesn’t exist in Petty Cash.
       </p>
       <Button asChild variant="outline" className="mt-2">
-        <Link href="/">Back to list</Link>
+        <Link href="/">Back to overview</Link>
       </Button>
     </div>
   );

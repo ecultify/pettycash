@@ -22,7 +22,7 @@ function handleError(err: unknown) {
 export async function GET() {
   try {
     const data = await callBackend<{ records: DisbursementRecord[] }>(
-      "list.php?limit=200&offset=0",
+      "list.php?limit=500",
       "GET",
     );
     return NextResponse.json({ records: data.records ?? [] });
