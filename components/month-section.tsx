@@ -12,9 +12,11 @@ import type { MonthGroup } from "@/lib/aggregate";
 export function MonthSection({
   group,
   defaultOpen = true,
+  onUpdated,
 }: {
   group: MonthGroup;
   defaultOpen?: boolean;
+  onUpdated: () => void;
 }) {
   const [open, setOpen] = useState(defaultOpen);
 
@@ -64,7 +66,7 @@ export function MonthSection({
             />
           </div>
           {group.items.map((d) => (
-            <DisbursementRow key={d.id} d={d} />
+            <DisbursementRow key={d.id} d={d} onUpdated={onUpdated} />
           ))}
         </>
       )}

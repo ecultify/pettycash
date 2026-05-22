@@ -65,7 +65,11 @@ export default function AllocatorPage({
         ) : (
           <div className="space-y-4">
             {months.map((m) => (
-              <MonthSection key={m.key} group={m} />
+              <MonthSection
+                key={m.key}
+                group={m}
+                onUpdated={() => reload()}
+              />
             ))}
           </div>
         )}

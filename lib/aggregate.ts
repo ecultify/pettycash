@@ -117,3 +117,13 @@ export function distinctNames(
   }
   return [...set].sort((a, b) => a.localeCompare(b));
 }
+
+// Distinct, sorted notes — used for note suggestions on the entry forms.
+export function distinctNotes(items: Disbursement[]): string[] {
+  const set = new Set<string>();
+  for (const d of items) {
+    const value = (d.notes ?? "").trim();
+    if (value) set.add(value);
+  }
+  return [...set].sort((a, b) => a.localeCompare(b));
+}

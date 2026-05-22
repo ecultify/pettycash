@@ -1,16 +1,16 @@
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppHeader } from "@/components/app-header";
 import { StatusPill } from "@/components/status-pill";
 import { Stat } from "@/components/stat";
+import { Combobox } from "@/components/combobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -30,6 +30,7 @@ import {
   updateDisbursement,
 } from "@/lib/client";
 import { formatDate, formatDateTime, formatINR, normalise } from "@/lib/format";
+import { distinctNames, distinctNotes } from "@/lib/aggregate";
 import type { Disbursement } from "@/lib/types";
 
 type Form = {
@@ -66,6 +67,7 @@ export default function DetailPage({
   const router = useRouter();
 
   const [record, setRecord] = useState<Disbursement | null>(null);
+  const [allItems, setAllItems] = useState<Disbursement[]>([]);
   const [form, setForm] = useState<Form | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -76,7 +78,9 @@ export default function DetailPage({
     setError(null);
     try {
       const records = await fetchDisbursements();
-      const found = records.map(normalise).find((d) => d.id === recordId);
+      const list = records.map(normalise);
+      setAllItems(list);
+      const found = list.find((d) => d.id === recordId);
       if (!found) {
         setError("This disbursement no longer exists.");
         return;
@@ -94,6 +98,21 @@ export default function DetailPage({
 
   const set = (key: keyof Form) => (value: string) =>
     setForm((f) => (f ? { ...f, [key]: value } : f));
+
+  // Suggestions for the name/notes fields, drawn from all records.
+  const allocatorOptions = useMemo(
+    () => distinctNames(allItems, "allocator"),
+    [allItems],
+  );
+  const giverOptions = useMemo(
+    () => distinctNames(allItems, "giver"),
+    [allItems],
+  );
+  const recipientOptions = useMemo(
+    () => distinctNames(allItems, "recipient"),
+    [allItems],
+  );
+  const noteOptions = useMemo(() => distinctNotes(allItems), [allItems]);
 
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
@@ -296,11 +315,10 @@ export default function DetailPage({
           <Separator />
 
           <Field label="Allocator">
-            <Input
+            <Combobox
               value={form.allocator}
-              onChange={(e) => set("allocator")(e.target.value)}
-              autoComplete="off"
-              className="h-12"
+              onChange={set("allocator")}
+              options={allocatorOptions}
             />
           </Field>
 
@@ -314,20 +332,18 @@ export default function DetailPage({
           </Field>
 
           <Field label="Giver">
-            <Input
+            <Combobox
               value={form.giver}
-              onChange={(e) => set("giver")(e.target.value)}
-              autoComplete="off"
-              className="h-12"
+              onChange={set("giver")}
+              options={giverOptions}
             />
           </Field>
 
           <Field label="Recipient">
-            <Input
+            <Combobox
               value={form.recipient}
-              onChange={(e) => set("recipient")(e.target.value)}
-              autoComplete="off"
-              className="h-12"
+              onChange={set("recipient")}
+              options={recipientOptions}
             />
           </Field>
 
@@ -350,11 +366,11 @@ export default function DetailPage({
           </Field>
 
           <Field label="Notes">
-            <Textarea
+            <Combobox
               value={form.notes}
-              onChange={(e) => set("notes")(e.target.value)}
+              onChange={set("notes")}
+              options={noteOptions}
               placeholder="Optional"
-              rows={3}
             />
           </Field>
 

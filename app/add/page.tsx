@@ -4,13 +4,13 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AppHeader } from "@/components/app-header";
+import { Combobox } from "@/components/combobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { createDisbursement } from "@/lib/client";
 import { useDisbursements } from "@/lib/use-disbursements";
-import { distinctNames } from "@/lib/aggregate";
+import { distinctNames, distinctNotes } from "@/lib/aggregate";
 
 function today() {
   // Local YYYY-MM-DD for the date input default.
@@ -19,7 +19,7 @@ function today() {
   return new Date(d.getTime() - offset * 60000).toISOString().slice(0, 10);
 }
 
-// Validate an optional money field; returns the parsed number or null,
+// Validate an optional money field; returns the parsed number or undefined,
 // or throws a message string when the value is present but invalid.
 function optionalAmount(raw: string, label: string): number | undefined {
   const trimmed = raw.trim();
@@ -43,15 +43,18 @@ export default function AddPage() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Name suggestions drawn from existing records (free text still allowed).
+  // Suggestions drawn from existing records (free text is still allowed).
+  const records = items ?? [];
   const allocatorNames = useMemo(
-    () => distinctNames(items ?? [], "allocator"),
-    [items],
+    () => distinctNames(records, "allocator"),
+    [records],
   );
-  const giverNames = useMemo(
-    () => distinctNames(items ?? [], "giver"),
-    [items],
+  const giverNames = useMemo(() => distinctNames(records, "giver"), [records]);
+  const recipientNames = useMemo(
+    () => distinctNames(records, "recipient"),
+    [records],
   );
+  const noteOptions = useMemo(() => distinctNotes(records), [records]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -112,19 +115,12 @@ export default function AddPage() {
       <form onSubmit={onSubmit} className="flex flex-1 flex-col px-4 py-4">
         <div className="space-y-4">
           <Field label="Allocator" required>
-            <Input
+            <Combobox
               value={allocator}
-              onChange={(e) => setAllocator(e.target.value)}
+              onChange={setAllocator}
+              options={allocatorNames}
               placeholder="Who gave you this money?"
-              list="allocator-names"
-              autoComplete="off"
-              className="h-12"
             />
-            <datalist id="allocator-names">
-              {allocatorNames.map((n) => (
-                <option key={n} value={n} />
-              ))}
-            </datalist>
           </Field>
 
           <Field label="Amount allocated (₹)">
@@ -138,28 +134,20 @@ export default function AddPage() {
           </Field>
 
           <Field label="Giver" required>
-            <Input
+            <Combobox
               value={giver}
-              onChange={(e) => setGiver(e.target.value)}
+              onChange={setGiver}
+              options={giverNames}
               placeholder="Who handed out the cash"
-              list="giver-names"
-              autoComplete="off"
-              className="h-12"
             />
-            <datalist id="giver-names">
-              {giverNames.map((n) => (
-                <option key={n} value={n} />
-              ))}
-            </datalist>
           </Field>
 
           <Field label="Recipient" required>
-            <Input
+            <Combobox
               value={recipient}
-              onChange={(e) => setRecipient(e.target.value)}
+              onChange={setRecipient}
+              options={recipientNames}
               placeholder="Who received it"
-              autoComplete="off"
-              className="h-12"
             />
           </Field>
 
@@ -193,11 +181,11 @@ export default function AddPage() {
           </Field>
 
           <Field label="Notes">
-            <Textarea
+            <Combobox
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Optional"
-              rows={3}
+              onChange={setNotes}
+              options={noteOptions}
+              placeholder="What is this cash for? (optional)"
             />
           </Field>
         </div>
