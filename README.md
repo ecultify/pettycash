@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Petty Cash
 
-## Getting Started
+A minimalistic, mobile-first web app for office staff to record cash
+disbursements and keep them updated. Built with Next.js (App Router,
+TypeScript), Tailwind CSS, and shadcn/ui.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **List** — every disbursement, newest first, with a summary strip
+  (Total Disbursed, Total Spent, Outstanding) and status pills.
+- **Add** — record a new disbursement (giver, recipient, amount, date, notes).
+- **Detail / Edit** — update amount spent, mark the remainder returned to the
+  giver, edit any field, or delete the record.
+
+All money is shown in Indian Rupees (`₹`).
+
+## How it talks to the backend
+
+The PHP backend at `https://cultform.ecultify.com/api/petty-cash` requires an
+`X-API-Key` header. **The browser never calls it directly and never sees the
+key.**
+
+- The React UI only ever calls this app's own routes under `/api/*`.
+- The Route Handler in [`app/api/disbursements/route.ts`](app/api/disbursements/route.ts)
+  runs on the server, attaches `X-API-Key` from `PETTY_CASH_API_KEY`, and
+  proxies to the PHP API.
+
+## Local development
+
+1. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+2. Create `.env.local` (copy from `.env.example`) and set the API key:
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+   ```
+   PETTY_CASH_API_KEY=your-real-key-here
+   ```
+
+3. Start the dev server:
+
+   ```bash
+   npm run dev
+   ```
+
+   Open <http://localhost:3000>. Use a phone-sized viewport (or your phone on
+   the same network) for the intended experience.
+
+## Deploy to Vercel
+
+1. Push this repository to GitHub.
+2. In Vercel, **Add New… → Project** and import the repo. Next.js is detected
+   automatically — no build settings to change.
+3. Under **Settings → Environment Variables**, add:
+
+   | Name                 | Value         | Environments                      |
+   | -------------------- | ------------- | --------------------------------- |
+   | `PETTY_CASH_API_KEY` | your real key | Production, Preview, Development  |
+
+   Do **not** prefix it with `NEXT_PUBLIC_` — it must stay server-side only.
+4. Deploy. Re-deploy after changing environment variables so they take effect.
+
+## Project structure
+
+```
+app/
+  api/disbursements/route.ts   Server proxy (GET / POST / PATCH / DELETE)
+  page.tsx                     List + summary strip
+  add/page.tsx                 Add disbursement form
+  disbursement/[id]/page.tsx   Detail / edit / delete
+lib/
+  petty-cash-api.ts            Server-only backend client (attaches API key)
+  client.ts                    Browser fetch helpers (call /api/* only)
+  format.ts                    Money / date formatting, record normalisation
+  types.ts                     Shared types
+components/                    UI components + shadcn/ui primitives
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Tech
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Next.js App Router · TypeScript · Tailwind CSS v4 · shadcn/ui · sonner (toasts).
